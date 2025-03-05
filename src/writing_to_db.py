@@ -18,12 +18,18 @@ class WriteToDB:
         "1057",  # Касперский
     ]
 
-    def __init__(self):
+    def __init__(self, user_db="postgres"):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        full_path_file = os.path.join(base_dir, "data", 'settings.ini')
+        self.full_path_file = os.path.join(base_dir, "appdata", 'settings.ini')
+
+        if os.path.exists(self.full_path_file):
+            pass
+        else:
+            self.create_settings_file()
 
         config = configparser.ConfigParser()
-        config.read(full_path_file)
+
+        config.read(self.full_path_file)
 
         dbname = config['database']['dbname']
         user = config['database']['user']
@@ -31,14 +37,66 @@ class WriteToDB:
         port = config['database']['port']
         host = config['database']['host']
 
+        try:
+            self.conn = psycopg2.connect(
+                dbname=dbname,
+                user=user,
+                password=password,
+                port=port,
+                host=host
+            )
+            self.cur = self.conn.cursor()
+        except Exception as e:
+            print(f"Установить соединение с базой данных не удалось! Ошибка: {e}")
+
+        self.conn.autocommit = True
+
+        try:
+            self.cur.execute(f"CREATE DATABASE {user_db};")
+        except Exception:
+            pass
+        else:
+            config['database']['dbname'] = user_db
+            with open(self.full_path_file, 'w') as configfile:
+                config.write(configfile)
+
+            print("База данных успешно создана!\n")
+        finally:
+            self.close()
+
         self.conn = psycopg2.connect(
-            dbname=dbname,
+            dbname=user_db,
             user=user,
             password=password,
             port=port,
             host=host
         )
         self.cur = self.conn.cursor()
+
+    def create_settings_file(self):
+        print("Введите данные которые будут использоваться при подключении к базе данных.")
+
+        config = configparser.ConfigParser()
+
+        # Запрашиваем у пользователя данные для конфигурации
+        dbname = input("Введите имя базы данных (по умолчанию postgres): ") or "postgres"
+        user = input("Введите имя пользователя (по умолчанию postgres): ") or "postgres"
+        password = input("Введите пароль: ")
+        port = input("Введите порт (по умолчанию 5432): ") or "5432"
+        host = input("Введите хост (по умолчанию localhost): ") or "localhost"
+
+        # Заполняем секцию [database]
+        config['database'] = {
+            'dbname': dbname,
+            'user': user,
+            'password': password,
+            'port': port,
+            'host': host
+        }
+
+        # Сохраняем конфигурации в файл settings.ini
+        with open(self.full_path_file, 'w') as configfile:
+            config.write(configfile)
 
     def create_table(self):
         self.cur.execute('''CREATE TABLE IF NOT EXISTS employers 

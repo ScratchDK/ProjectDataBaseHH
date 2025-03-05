@@ -6,7 +6,7 @@ import configparser
 class DBManager:
     def __init__(self):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        full_path_file = os.path.join(base_dir, "data", 'settings.ini')
+        full_path_file = os.path.join(base_dir, "appdata", 'settings.ini')
 
         config = configparser.ConfigParser()
         config.read(full_path_file)
